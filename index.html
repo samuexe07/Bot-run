@@ -1,86 +1,70 @@
 <!doctype html>
-<html lang="en">
-<head>
+<html lang="bn"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Push & Control Panel</title>
+<title>Push Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#090d16;--card:#121824;--line:#1f293d;--tx:#f3f6fc;--mut:#7f8ea6;--fb:#3b82f6;--wp:#10b981;--api:#f59e0b;--bot:#8b5cf6;--ac:var(--fb)}
+:root{--bg:#0f1420;--card:#171e2e;--line:#2a3550;--tx:#e8ecf5;--mut:#8b97b3;--fb:#4f8cff;--wp:#2fd27a;--api:#ffb02e;--ac:var(--fb)}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font-family:'Space Grotesk',system-ui,sans-serif;display:flex;justify-content:center;align-items:center;padding:20px;background-image:radial-gradient(circle at top right, #1a103c 0%, transparent 40%), radial-gradient(circle at bottom left, #0d2137 0%, transparent 40%)}
-.wrap{width:100%;max-width:580px}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font-family:'Space Grotesk',system-ui,sans-serif;display:flex;justify-content:center;padding:20px}
+.wrap{width:100%;max-width:560px}
 h1{font-size:28px;margin:12px 0 4px;letter-spacing:-.5px}
 p.sub{color:var(--mut);margin:0 0 22px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 20px 40px rgba(0,0,0,0.4)}
-.tabs{display:flex;gap:6px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px}
-.tab{flex:1;min-width:90px;padding:12px 8px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;transition:all 0.2s ease}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab{flex:1;padding:12px 6px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;font-size:15px;font-family:inherit;cursor:pointer}
 .tab.on{color:#0b0f19;border-color:transparent}
-.tab[data-p=fb].on{background:var(--fb)}.tab[data-p=wp].on{background:var(--wp)}.tab[data-p=api].on{background:var(--api)}.tab[data-p=bot].on{background:var(--bot)}
+.tab[data-p=fb].on{background:var(--fb)}.tab[data-p=wp].on{background:var(--wp)}.tab[data-p=api].on{background:var(--api)}
 label{display:block;font-size:14px;color:var(--mut);margin-bottom:8px}
-select,textarea{width:100%;background:#070a12;border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px}
+select,textarea{width:100%;background:#0c111c;border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px}
 select{margin-bottom:8px;font-size:15px}
-textarea{min-height:180px;resize:vertical}
+textarea{min-height:200px;resize:vertical}
 textarea:focus,select:focus{outline:2px solid var(--ac);outline-offset:1px}
 .cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:14px}
 #keyBox{display:none}
-.btn-group{display:flex;gap:10px;margin-top:14px}
-button.go{flex:1;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#0b0f19;font:700 16px 'Space Grotesk',sans-serif;cursor:pointer;transition:opacity 0.2s}
+button.go{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#0b0f19;font:700 16px 'Space Grotesk',sans-serif;cursor:pointer}
 button.go:disabled{opacity:.5}
-button.action-btn{background:var(--bot);color:#fff}
 .msg{margin-top:14px;padding:12px;border-radius:12px;font-size:14px;display:none}
-.msg.ok{display:block;background:#062817;color:#34d399;border:1px solid #10b98133}
-.msg.err{display:block;background:#311018;color:#fb7185;border:1px solid #f43f5e33}
-</style>
-</head>
-<body>
+.msg.ok{display:block;background:#12301f;color:#7df0b0}
+.msg.err{display:block;background:#3a1620;color:#ff9aae}
+</style></head><body>
 <div class="wrap">
-  <h1>Push & Control Panel</h1>
-  <p class="sub">Manage your configurations, update tokens, and control bot status effortlessly.</p>
+<h1>Push Panel</h1>
+<p class="sub">Bot off thakleo cookie, session ba API URL update korun.</p>
 
-  <div class="card">
-    <div class="tabs">
-      <button class="tab on" data-p="fb">Facebook</button>
-      <button class="tab" data-p="wp">WhatsApp</button>
-      <button class="tab" data-p="api">API URL</button>
-      <button class="tab" data-p="bot">Bot Status</button>
-    </div>
-
-    <div id="keyBox">
-      <label for="key">Select Configuration Key</label>
-      <select id="key"></select>
-      <div class="cur" id="cur"></div>
-    </div>
-
-    <div id="inputSection">
-      <label for="data" id="lbl">Facebook JSON Cookie</label>
-      <textarea id="data" spellcheck="false" placeholder="Paste your data here..."></textarea>
-    </div>
-
-    <div class="btn-group">
-      <button class="go" id="push">Push to GitHub</button>
-    </div>
-    
-    <div class="msg" id="msg"></div>
-  </div>
+<div class="card">
+<div class="tabs">
+<button class="tab on" data-p="fb">Facebook</button>
+<button class="tab" data-p="wp">WhatsApp</button>
+<button class="tab" data-p="api">API URL</button>
 </div>
 
+<div id="keyBox">
+<label for="key">Kon key update korben</label>
+<select id="key"></select>
+<div class="cur" id="cur"></div>
+</div>
+
+<label for="data" id="lbl">Facebook JSON cookie</label>
+<textarea id="data" spellcheck="false"></textarea>
+<button class="go" id="push">Push to GitHub</button>
+<div class="msg" id="msg"></div>
+</div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 let platform="fb", apiData=null;
-const labels={fb:"Facebook JSON Cookie",wp:"WhatsApp Session",api:"New API URL",bot:"Bot Control Command"};
-const placeholders={fb:"Paste Facebook JSON cookie string...",wp:"Paste WhatsApp session credentials...",api:"Enter new API endpoint URL...",bot:"Enter custom control flags or leave default..."};
-const colors={fb:"--fb",wp:"--wp",api:"--api",bot:"--bot"};
-
+const labels={fb:"Facebook JSON cookie",wp:"WhatsApp session",api:"Notun API URL"};
+const colors={fb:"--fb",wp:"--wp",api:"--api"};
 function show(el,cls,t){el.className="msg "+cls;el.textContent=t}
 
 function showCurrent(){
   const v=apiData&&apiData[$("key").value];
-  $("cur").textContent="Current: "+(Array.isArray(v)?v.join(", "):(v||""));
+  $("cur").textContent="Ekhon: "+(Array.isArray(v)?v.join(", "):(v||""));
 }
-
 async function loadKeys(){
-  $("cur").textContent="Loading keys...";
+  $("cur").textContent="Load hocche...";
   try{
     const r=await fetch("/keys"); const j=await r.json();
     if(!r.ok) throw new Error(j.error);
@@ -93,61 +77,35 @@ async function loadKeys(){
   }catch(e){
     apiData=null;
     $("key").innerHTML='<option value="mahmud">mahmud</option>';
-    $("cur").textContent="Failed to load keys ("+e.message+"). Default: mahmud";
+    $("cur").textContent="Key list load hoyni ("+e.message+"). Default: mahmud";
   }
 }
-
 $("key").onchange=showCurrent;
 
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); platform=b.dataset.p;
-  
   $("lbl").textContent=labels[platform];
-  $("data").placeholder=placeholders[platform];
   document.documentElement.style.setProperty("--ac","var("+colors[platform]+")");
-  
   $("keyBox").style.display=platform==="api"?"block":"none";
-  $("inputSection").style.display=platform==="bot"?"none":"block";
-  
-  const pushBtn = $("push");
-  if(platform==="bot"){
-    pushBtn.textContent="Run Bot Now";
-  } else {
-    pushBtn.textContent="Push to GitHub";
-  }
-  
   $("msg").className="msg";
   if(platform==="api") loadKeys();
 });
 
 $("push").onclick=async()=>{
-  const btn=$("push"); btn.disabled=true; 
-  const originalText = btn.textContent;
-  btn.textContent=platform==="bot"?"Starting Bot...":"Pushing...";
-  
+  const btn=$("push"); btn.disabled=true; btn.textContent="Pushing...";
   try{
-    const endpoint = platform==="bot" ? "/run-bot" : "/push";
-    const body={platform, data:$("data").value};
+    const body={platform,data:$("data").value};
     if(platform==="api") body.key=$("key").value||"mahmud";
-    
-    const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const r=await fetch("/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     const j=await r.json();
-    
-    if(!r.ok) throw new Error(j.error || "Operation failed");
-    
-    if(platform==="bot"){
-      show($("msg"),"ok","Bot started successfully!");
-    } else {
-      show($("msg"),"ok","Successfully updated! Changes may take a few minutes to apply.");
+    if(!r.ok) show($("msg"),"err","Update hoyni: "+j.error);
+    else {
+      show($("msg"),"ok","Update hoyeche. Bot cholte kichu minute lagte pare.");
       $("data").value="";
       if(platform==="api") loadKeys();
     }
-  }catch(e){
-    show($("msg"),"err","Error: "+e.message);
-  }
-  btn.disabled=false; btn.textContent=originalText;
+  }catch(e){show($("msg"),"err","Network error: "+e.message)}
+  btn.disabled=false; btn.textContent="Push to GitHub";
 };
-</script>
-</body>
-</html>
+</script></body></html>
