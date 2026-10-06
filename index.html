@@ -1,70 +1,153 @@
 <!doctype html>
-<html lang="bn"><head>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Push Panel</title>
+<title>Hinata Bot Run</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0f1420;--card:#171e2e;--line:#2a3550;--tx:#e8ecf5;--mut:#8b97b3;--fb:#4f8cff;--wp:#2fd27a;--api:#ffb02e;--ac:var(--fb)}
+:root{
+  --bg: #070913;
+  --card: rgba(20, 26, 44, 0.75);
+  --line: rgba(255, 255, 255, 0.08);
+  --tx: #f0f4ff;
+  --mut: #8f9bb3;
+  --fb: #3b82f6;
+  --wp: #10b981;
+  --api: #f59e0b;
+  --ac: var(--fb);
+}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font-family:'Space Grotesk',system-ui,sans-serif;display:flex;justify-content:center;padding:20px}
+body{
+  margin:0;
+  min-height:100vh;
+  background: radial-gradient(circle at top, #111827 0%, #070913 100%);
+  color:var(--tx);
+  font-family:'Space Grotesk',system-ui,sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:20px;
+}
 .wrap{width:100%;max-width:560px}
-h1{font-size:28px;margin:12px 0 4px;letter-spacing:-.5px}
-p.sub{color:var(--mut);margin:0 0 22px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
-.tabs{display:flex;gap:8px;margin-bottom:16px}
-.tab{flex:1;padding:12px 6px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;font-size:15px;font-family:inherit;cursor:pointer}
-.tab.on{color:#0b0f19;border-color:transparent}
+.header-box{
+  text-align: center;
+  margin-bottom: 24px;
+}
+h1{
+  font-size:32px;
+  margin:0 0 6px;
+  letter-spacing:-.5px;
+  background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+p.sub{color:var(--mut);margin:0;font-size:14px}
+.card{
+  background:var(--card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border:1px solid var(--line);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  border-radius:20px;
+  padding:24px
+}
+.tabs{display:flex;gap:10px;margin-bottom:20px}
+.tab{
+  flex:1;
+  padding:12px 8px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,0.02);
+  color:var(--mut);
+  font-weight:600;
+  font-size:14px;
+  font-family:inherit;
+  cursor:pointer;
+  transition: all 0.25s ease;
+}
+.tab:hover{background:rgba(255,255,255,0.05); color:var(--tx)}
+.tab.on{color:#0b0f19;border-color:transparent;box-shadow: 0 4px 15px rgba(0,0,0,0.3)}
 .tab[data-p=fb].on{background:var(--fb)}.tab[data-p=wp].on{background:var(--wp)}.tab[data-p=api].on{background:var(--api)}
-label{display:block;font-size:14px;color:var(--mut);margin-bottom:8px}
-select,textarea{width:100%;background:#0c111c;border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px}
-select{margin-bottom:8px;font-size:15px}
-textarea{min-height:200px;resize:vertical}
-textarea:focus,select:focus{outline:2px solid var(--ac);outline-offset:1px}
-.cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:14px}
+label{display:block;font-size:13px;font-weight: 600;color:var(--mut);margin-bottom:8px;text-transform: uppercase;letter-spacing: 0.5px}
+select,textarea{
+  width:100%;
+  background:rgba(12, 17, 28, 0.7);
+  border:1px solid var(--line);
+  border-radius:14px;
+  color:var(--tx);
+  padding:14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  transition: all 0.2s ease;
+}
+select{margin-bottom:8px;font-size:14px;cursor:pointer}
+textarea{min-height:220px;resize:vertical}
+textarea:focus,select:focus{outline:none;border-color:var(--ac);box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15)}
+.cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:16px;padding:8px 12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px dashed var(--line)}
 #keyBox{display:none}
-button.go{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#0b0f19;font:700 16px 'Space Grotesk',sans-serif;cursor:pointer}
-button.go:disabled{opacity:.5}
-.msg{margin-top:14px;padding:12px;border-radius:12px;font-size:14px;display:none}
-.msg.ok{display:block;background:#12301f;color:#7df0b0}
-.msg.err{display:block;background:#3a1620;color:#ff9aae}
-</style></head><body>
+button.go{
+  width:100%;
+  margin-top:16px;
+  padding:15px;
+  border:0;
+  border-radius:14px;
+  background:var(--ac);
+  color:#0b0f19;
+  font:700 15px 'Space Grotesk',sans-serif;
+  cursor:pointer;
+  transition: transform 0.1s ease, opacity 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+button.go:hover{filter: brightness(1.1)}
+button.go:active{transform: scale(0.98)}
+button.go:disabled{opacity:.5; cursor:not-allowed; transform: none}
+.msg{margin-top:16px;padding:14px;border-radius:12px;font-size:14px;display:none;font-weight: 500}
+.msg.ok{display:block;background:rgba(18, 48, 31, 0.8);border:1px solid rgba(47, 210, 122, 0.3);color:#7df0b0}
+.msg.err{display:block;background:rgba(58, 22, 32, 0.8);border:1px solid rgba(255, 154, 174, 0.3);color:#ff9aae}
+</style>
+</head>
+<body>
 <div class="wrap">
-<h1>Push Panel</h1>
-<p class="sub">Bot off thakleo cookie, session ba API URL update korun.</p>
+  <div class="header-box">
+    <h1>Hinata Bot Run</h1>
+    <p class="sub">Update your cookies, sessions, or API URLs seamlessly even when the bot is offline.</p>
+  </div>
 
-<div class="card">
-<div class="tabs">
-<button class="tab on" data-p="fb">Facebook</button>
-<button class="tab" data-p="wp">WhatsApp</button>
-<button class="tab" data-p="api">API URL</button>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab on" data-p="fb">Facebook</button>
+      <button class="tab" data-p="wp">WhatsApp</button>
+      <button class="tab" data-p="api">API URL</button>
+    </div>
+
+    <div id="keyBox">
+      <label for="key">Target Config Key</label>
+      <select id="key"></select>
+      <div class="cur" id="cur"></div>
+    </div>
+
+    <label for="data" id="lbl">Facebook JSON Cookie</label>
+    <textarea id="data" spellcheck="false" placeholder="Paste your configuration data here..."></textarea>
+    
+    <button class="go" id="push">Push to GitHub</button>
+    <div class="msg" id="msg"></div>
+  </div>
 </div>
 
-<div id="keyBox">
-<label for="key">Kon key update korben</label>
-<select id="key"></select>
-<div class="cur" id="cur"></div>
-</div>
-
-<label for="data" id="lbl">Facebook JSON cookie</label>
-<textarea id="data" spellcheck="false"></textarea>
-<button class="go" id="push">Push to GitHub</button>
-<div class="msg" id="msg"></div>
-</div>
-</div>
 <script>
 const $=id=>document.getElementById(id);
 let platform="fb", apiData=null;
-const labels={fb:"Facebook JSON cookie",wp:"WhatsApp session",api:"Notun API URL"};
+const labels={fb:"Facebook JSON Cookie",wp:"WhatsApp Session Data",api:"New API URL"};
 const colors={fb:"--fb",wp:"--wp",api:"--api"};
 function show(el,cls,t){el.className="msg "+cls;el.textContent=t}
 
 function showCurrent(){
   const v=apiData&&apiData[$("key").value];
-  $("cur").textContent="Ekhon: "+(Array.isArray(v)?v.join(", "):(v||""));
+  $("cur").textContent="Current: "+(Array.isArray(v)?v.join(", "):(v||"None"));
 }
 async function loadKeys(){
-  $("cur").textContent="Load hocche...";
+  $("cur").textContent="Loading keys...";
   try{
     const r=await fetch("/keys"); const j=await r.json();
     if(!r.ok) throw new Error(j.error);
@@ -77,7 +160,7 @@ async function loadKeys(){
   }catch(e){
     apiData=null;
     $("key").innerHTML='<option value="mahmud">mahmud</option>';
-    $("cur").textContent="Key list load hoyni ("+e.message+"). Default: mahmud";
+    $("cur").textContent="Failed to load keys ("+e.message+"). Defaulting to: mahmud";
   }
 }
 $("key").onchange=showCurrent;
@@ -93,19 +176,21 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
 });
 
 $("push").onclick=async()=>{
-  const btn=$("push"); btn.disabled=true; btn.textContent="Pushing...";
+  const btn=$("push"); btn.disabled=true; btn.textContent="Pushing to repository...";
   try{
     const body={platform,data:$("data").value};
     if(platform==="api") body.key=$("key").value||"mahmud";
     const r=await fetch("/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     const j=await r.json();
-    if(!r.ok) show($("msg"),"err","Update hoyni: "+j.error);
+    if(!r.ok) show($("msg"),"err","Update failed: "+j.error);
     else {
-      show($("msg"),"ok","Update hoyeche. Bot cholte kichu minute lagte pare.");
+      show($("msg"),"ok","Successfully updated! It may take a couple of minutes for the bot to restart.");
       $("data").value="";
       if(platform==="api") loadKeys();
     }
   }catch(e){show($("msg"),"err","Network error: "+e.message)}
   btn.disabled=false; btn.textContent="Push to GitHub";
 };
-</script></body></html>
+</script>
+</body>
+</html>
