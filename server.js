@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
+const path = require("path");
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
@@ -24,13 +25,11 @@ const ghUrl = (t) => `https://api.github.com/repos/${t.owner}/${t.repo}/contents
 const ghHeaders = (t) => ({ Authorization: `token ${t.token}`, Accept: "application/vnd.github.v3+json" });
 const errMsg = (e) => e.response?.data?.message || e.message;
 
-// API tab-er jonno: file-er ekhonkar key ar URL gulo dekhano
 app.get("/keys", async (req, res) => {
   const t = TARGETS.api;
   try {
     const { data: cur } = await axios.get(ghUrl(t), { headers: ghHeaders(t) });
-    const json = JSON.parse(Buffer.from(cur.content, "base64").toString("utf-8"));
-    res.json(json);
+    res.json(JSON.parse(Buffer.from(cur.content, "base64").toString("utf-8")));
   } catch (e) {
     res.status(500).json({ error: errMsg(e) });
   }
@@ -51,7 +50,6 @@ app.post("/push", async (req, res) => {
       if (!(key in json)) return res.status(400).json({ error: `"${key}" key file-e nai.` });
       const url = data.trim();
       if (Array.isArray(json[key])) {
-        // mahmud: replace hobe. apis: list-e add hobe (onno URL gulo thakbe)
         json[key] = key === "mahmud" ? [url] : [...new Set([...json[key], url])];
       } else {
         json[key] = url;
@@ -67,75 +65,5 @@ app.post("/push", async (req, res) => {
   }
 });
 
-app.get("/", (_, res) => res.type("html").send(PAGE));
+app.get("/", (_, res) => res.sendFile(path.join(__dirname, "index.html")));
 app.listen(PORT, () => console.log("Push Panel running on port " + PORT));
-
-const PAGE = `<!doctype html>
-<html lang="bn"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Push Panel</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0f1420;--card:#171e2e;--line:#2a3550;--tx:#e8ecf5;--mut:#8b97b3;--fb:#4f8cff;--wp:#2fd27a;--api:#ffb02e;--ac:var(--fb)}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font-family:'Space Grotesk',system-ui,sans-serif;display:flex;justify-content:center;padding:20px}
-.wrap{width:100%;max-width:560px}
-h1{font-size:28px;margin:12px 0 4px;letter-spacing:-.5px}
-p.sub{color:var(--mut);margin:0 0 22px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
-.tabs{display:flex;gap:8px;margin-bottom:16px}
-.tab{flex:1;padding:12px 6px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;font-size:15px;font-family:inherit;cursor:pointer}
-.tab.on{color:#0b0f19;border-color:transparent}
-.tab[data-p=fb].on{background:var(--fb)}.tab[data-p=wp].on{background:var(--wp)}.tab[data-p=api].on{background:var(--api)}
-label{display:block;font-size:14px;color:var(--mut);margin-bottom:8px}
-select,textarea{width:100%;background:#0c111c;border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px}
-select{margin-bottom:8px;font-size:15px}
-textarea{min-height:200px;resize:vertical}
-textarea:focus,select:focus{outline:2px solid var(--ac);outline-offset:1px}
-.cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:14px}
-#keyBox{display:none}
-button.go{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#0b0f19;font:700 16px 'Space Grotesk',sans-serif;cursor:pointer}
-button.go:disabled{opacity:.5}
-.msg{margin-top:14px;padding:12px;border-radius:12px;font-size:14px;display:none}
-.msg.ok{display:block;background:#12301f;color:#7df0b0}
-.msg.err{display:block;background:#3a1620;color:#ff9aae}
-</style></head><body>
-<div class="wrap">
-<h1>Push Panel</h1>
-<p class="sub">Bot off thakleo cookie, session ba API URL update korun.</p>
-
-<div class="card">
-<div class="tabs">
-<button class="tab on" data-p="fb">Facebook</button>
-<button class="tab" data-p="wp">WhatsApp</button>
-<button class="tab" data-p="api">API URL</button>
-</div>
-
-<div id="keyBox">
-<label for="key">Kon key update korben</label>
-<select id="key"></select>
-<div class="cur" id="cur"></div>
-</div>
-
-<label for="data" id="lbl">Facebook JSON cookie</label>
-<textarea id="data" spellcheck="false"></textarea>
-<button class="go" id="push">Push to GitHub</button>
-<div class="msg" id="msg"></div>
-</div>
-</div>
-<script>
-const $=id=>document.getElementById(id);
-let platform="fb", apiData=null;
-const labels={fb:"Facebook JSON cookie",wp:"WhatsApp session",api:"Notun API URL"};
-const colors={fb:"--fb",wp:"--wp",api:"--api"};
-function show(el,cls,t){el.className="msg "+cls;el.textContent=t}
-
-function showCurrent(){
-  const v=apiData&&apiData[$("key").value];
-  $("cur").textContent="Ekhon: "+(Array.isArray(v)?v.join(", "):(v||""));
-}
-async function loadKeys(){
-  $("cur").textContent="Load hocche...";
-  try{
-    co
