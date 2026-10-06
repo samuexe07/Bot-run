@@ -17,33 +17,53 @@ if (!GITHUB_TOKEN) {
 const TARGETS = {
   fb: { owner: "samuexe07", repo: "Messenger-pro", path: "account.txt", token: GITHUB_TOKEN, msg: "Update Facebook cookie from web" },
   wp: { owner: "samuexe07", repo: "WhatsApp-bot-v2", path: "account.txt", token: GITHUB_TOKEN, msg: "Update WhatsApp session from web" },
-  api: { owner: "mahmud-aura", repo: "HINATA", path: "baseApiUrl.json", token: MAHMUD_TOKEN, msg: "Update API URLs via web" },
+  api: { owner: "mahmud-aura", repo: "HINATA", path: "baseApiUrl.json", token: MAHMUD_TOKEN, msg: "Update API URL via web" },
 };
+
+const ghUrl = (t) => `https://api.github.com/repos/${t.owner}/${t.repo}/contents/${t.path}`;
+const ghHeaders = (t) => ({ Authorization: `token ${t.token}`, Accept: "application/vnd.github.v3+json" });
+const errMsg = (e) => e.response?.data?.message || e.message;
+
+// API tab-er jonno: file-er ekhonkar key ar URL gulo dekhano
+app.get("/keys", async (req, res) => {
+  const t = TARGETS.api;
+  try {
+    const { data: cur } = await axios.get(ghUrl(t), { headers: ghHeaders(t) });
+    const json = JSON.parse(Buffer.from(cur.content, "base64").toString("utf-8"));
+    res.json(json);
+  } catch (e) {
+    res.status(500).json({ error: errMsg(e) });
+  }
+});
 
 app.post("/push", async (req, res) => {
   const { platform, data } = req.body;
+  const key = req.body.key || "mahmud";
   const t = TARGETS[platform];
   if (!t) return res.status(400).json({ error: "Platform vul." });
   if (!data || !String(data).trim()) return res.status(400).json({ error: "Data dite hobe." });
 
-  const url = `https://api.github.com/repos/${t.owner}/${t.repo}/contents/${t.path}`;
-  const headers = { Authorization: `token ${t.token}`, Accept: "application/vnd.github.v3+json" };
-
   try {
-    const { data: cur } = await axios.get(url, { headers });
+    const { data: cur } = await axios.get(ghUrl(t), { headers: ghHeaders(t) });
     let content;
     if (platform === "api") {
       const json = JSON.parse(Buffer.from(cur.content, "base64").toString("utf-8"));
-      json.mahmud = [data.trim()];
-      json.mahmudexe = data.trim();
+      if (!(key in json)) return res.status(400).json({ error: `"${key}" key file-e nai.` });
+      const url = data.trim();
+      if (Array.isArray(json[key])) {
+        // mahmud: replace hobe. apis: list-e add hobe (onno URL gulo thakbe)
+        json[key] = key === "mahmud" ? [url] : [...new Set([...json[key], url])];
+      } else {
+        json[key] = url;
+      }
       content = Buffer.from(JSON.stringify(json, null, 2)).toString("base64");
     } else {
       content = Buffer.from(data).toString("base64");
     }
-    await axios.put(url, { message: t.msg, content, sha: cur.sha }, { headers });
+    await axios.put(ghUrl(t), { message: t.msg, content, sha: cur.sha }, { headers: ghHeaders(t) });
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.response?.data?.message || e.message });
+    res.status(500).json({ error: errMsg(e) });
   }
 });
 
@@ -69,8 +89,12 @@ p.sub{color:var(--mut);margin:0 0 22px}
 .tab.on{color:#0b0f19;border-color:transparent}
 .tab[data-p=fb].on{background:var(--fb)}.tab[data-p=wp].on{background:var(--wp)}.tab[data-p=api].on{background:var(--api)}
 label{display:block;font-size:14px;color:var(--mut);margin-bottom:8px}
-textarea{width:100%;min-height:200px;resize:vertical;background:#0c111c;border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px}
-textarea:focus{outline:2px solid var(--ac);outline-offset:1px}
+select,textarea{width:100%;background:#0c111c;border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px}
+select{margin-bottom:8px;font-size:15px}
+textarea{min-height:200px;resize:vertical}
+textarea:focus,select:focus{outline:2px solid var(--ac);outline-offset:1px}
+.cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:14px}
+#keyBox{display:none}
 button.go{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#0b0f19;font:700 16px 'Space Grotesk',sans-serif;cursor:pointer}
 button.go:disabled{opacity:.5}
 .msg{margin-top:14px;padding:12px;border-radius:12px;font-size:14px;display:none}
@@ -87,6 +111,13 @@ button.go:disabled{opacity:.5}
 <button class="tab" data-p="wp">WhatsApp</button>
 <button class="tab" data-p="api">API URL</button>
 </div>
+
+<div id="keyBox">
+<label for="key">Kon key update korben</label>
+<select id="key"></select>
+<div class="cur" id="cur"></div>
+</div>
+
 <label for="data" id="lbl">Facebook JSON cookie</label>
 <textarea id="data" spellcheck="false"></textarea>
 <button class="go" id="push">Push to GitHub</button>
@@ -95,25 +126,16 @@ button.go:disabled{opacity:.5}
 </div>
 <script>
 const $=id=>document.getElementById(id);
-let platform="fb";
+let platform="fb", apiData=null;
 const labels={fb:"Facebook JSON cookie",wp:"WhatsApp session",api:"Notun API URL"};
 const colors={fb:"--fb",wp:"--wp",api:"--api"};
 function show(el,cls,t){el.className="msg "+cls;el.textContent=t}
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
-  b.classList.add("on"); platform=b.dataset.p;
-  $("lbl").textContent=labels[platform];
-  document.documentElement.style.setProperty("--ac","var("+colors[platform]+")");
-  $("msg").className="msg";
-});
-$("push").onclick=async()=>{
-  const btn=$("push"); btn.disabled=true; btn.textContent="Pushing...";
+
+function showCurrent(){
+  const v=apiData&&apiData[$("key").value];
+  $("cur").textContent="Ekhon: "+(Array.isArray(v)?v.join(", "):(v||""));
+}
+async function loadKeys(){
+  $("cur").textContent="Load hocche...";
   try{
-    const r=await fetch("/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({platform,data:$("data").value})});
-    const j=await r.json();
-    if(!r.ok) show($("msg"),"err","Update hoyni: "+j.error);
-    else {show($("msg"),"ok","Update hoyeche. Bot cholte kichu minute lagte pare."); $("data").value="";}
-  }catch(e){show($("msg"),"err","Network error: "+e.message)}
-  btn.disabled=false; btn.textContent="Push to GitHub";
-};
-</script></body></html>`;
+    co
