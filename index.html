@@ -1,82 +1,86 @@
 <!doctype html>
-<html lang="en"><head>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MahMUD Bot Control Panel</title>
+<title>Push & Control Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#090d16;--card:#121826;--line:#1e293b;--tx:#f1f5f9;--mut:#94a3b8;--fb:#3b82f6;--wp:#10b981;--api:#f59e0b;--run:#8b5cf6;--ac:var(--fb)}
+:root{--bg:#090d16;--card:#121824;--line:#1f293d;--tx:#f3f6fc;--mut:#7f8ea6;--fb:#3b82f6;--wp:#10b981;--api:#f59e0b;--bot:#8b5cf6;--ac:var(--fb)}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:radial-gradient(circle at top right, #1e1b4b, #090d16 60%);color:var(--tx);font-family:'Space Grotesk',system-ui,sans-serif;display:flex;justify-content:center;align-items:center;padding:20px}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font-family:'Space Grotesk',system-ui,sans-serif;display:flex;justify-content:center;align-items:center;padding:20px;background-image:radial-gradient(circle at top right, #1a103c 0%, transparent 40%), radial-gradient(circle at bottom left, #0d2137 0%, transparent 40%)}
 .wrap{width:100%;max-width:580px}
-h1{font-size:28px;margin:0 0 4px;letter-spacing:-.5px;font-weight:700;background:linear-gradient(90deg, #fff, #94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-p.sub{color:var(--mut);margin:0 0 20px;font-size:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03) inset}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:18px}
-.tab{padding:10px 4px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;transition:all .2s ease}
-.tab:hover{border-color:var(--mut);color:var(--tx)}
-.tab.on{color:#090d16;border-color:transparent}
-.tab[data-p=fb].on{background:var(--fb)}.tab[data-p=wp].on{background:var(--wp)}.tab[data-p=api].on{background:var(--api)}.tab[data-p=run].on{background:var(--run);color:#fff}
-label{display:block;font-size:13px;color:var(--mut);margin-bottom:8px;font-weight:600}
+h1{font-size:28px;margin:12px 0 4px;letter-spacing:-.5px}
+p.sub{color:var(--mut);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 20px 40px rgba(0,0,0,0.4)}
+.tabs{display:flex;gap:6px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px}
+.tab{flex:1;min-width:90px;padding:12px 8px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;transition:all 0.2s ease}
+.tab.on{color:#0b0f19;border-color:transparent}
+.tab[data-p=fb].on{background:var(--fb)}.tab[data-p=wp].on{background:var(--wp)}.tab[data-p=api].on{background:var(--api)}.tab[data-p=bot].on{background:var(--bot)}
+label{display:block;font-size:14px;color:var(--mut);margin-bottom:8px}
 select,textarea{width:100%;background:#070a12;border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px}
-select{margin-bottom:8px;font-size:14px}
+select{margin-bottom:8px;font-size:15px}
 textarea{min-height:180px;resize:vertical}
 textarea:focus,select:focus{outline:2px solid var(--ac);outline-offset:1px}
 .cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:14px}
 #keyBox{display:none}
-#runBox{display:none;text-align:center;padding:10px 0}
-.run-desc{color:var(--mut);font-size:14px;margin-bottom:16px}
-button.go{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#090d16;font:700 15px 'Space Grotesk',sans-serif;cursor:pointer;transition:transform .1s ease, opacity .2s}
-button.go:active{transform:scale(0.98)}
-button.go:disabled{opacity:.5;cursor:not-allowed}
-.msg{margin-top:14px;padding:12px;border-radius:12px;font-size:13px;display:none;line-height:1.4}
-.msg.ok{display:block;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.2)}
-.msg.err{display:block;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.2)}
-</style></head><body>
+.btn-group{display:flex;gap:10px;margin-top:14px}
+button.go{flex:1;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#0b0f19;font:700 16px 'Space Grotesk',sans-serif;cursor:pointer;transition:opacity 0.2s}
+button.go:disabled{opacity:.5}
+button.action-btn{background:var(--bot);color:#fff}
+.msg{margin-top:14px;padding:12px;border-radius:12px;font-size:14px;display:none}
+.msg.ok{display:block;background:#062817;color:#34d399;border:1px solid #10b98133}
+.msg.err{display:block;background:#311018;color:#fb7185;border:1px solid #f43f5e33}
+</style>
+</head>
+<body>
 <div class="wrap">
-<h1>MahMUD Bot Panel</h1>
-<p class="sub">Update session cookies, manage API endpoints, or run your bot instantly.</p>
+  <h1>Push & Control Panel</h1>
+  <p class="sub">Manage your configurations, update tokens, and control bot status effortlessly.</p>
 
-<div class="card">
-<div class="tabs">
-<button class="tab on" data-p="fb">Facebook</button>
-<button class="tab" data-p="wp">WhatsApp</button>
-<button class="tab" data-p="api">API URL</button>
-<button class="tab" data-p="run">Run Bot</button>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab on" data-p="fb">Facebook</button>
+      <button class="tab" data-p="wp">WhatsApp</button>
+      <button class="tab" data-p="api">API URL</button>
+      <button class="tab" data-p="bot">Bot Status</button>
+    </div>
+
+    <div id="keyBox">
+      <label for="key">Select Configuration Key</label>
+      <select id="key"></select>
+      <div class="cur" id="cur"></div>
+    </div>
+
+    <div id="inputSection">
+      <label for="data" id="lbl">Facebook JSON Cookie</label>
+      <textarea id="data" spellcheck="false" placeholder="Paste your data here..."></textarea>
+    </div>
+
+    <div class="btn-group">
+      <button class="go" id="push">Push to GitHub</button>
+    </div>
+    
+    <div class="msg" id="msg"></div>
+  </div>
 </div>
 
-<div id="keyBox">
-<label for="key">Select target configuration key</label>
-<select id="key"></select>
-<div class="cur" id="cur"></div>
-</div>
-
-<div id="configSection">
-<label for="data" id="lbl">Facebook JSON Cookie</label>
-<textarea id="data" spellcheck="false" placeholder="Paste your configuration or cookie data here..."></textarea>
-</div>
-
-<div id="runBox">
-<div class="run-desc">Click the button below to initialize and execute your bot instance immediately.</div>
-</div>
-
-<button class="go" id="push">Push to GitHub</button>
-<div class="msg" id="msg"></div>
-</div>
-</div>
 <script>
 const $=id=>document.getElementById(id);
 let platform="fb", apiData=null;
-const labels={fb:"Facebook JSON Cookie",wp:"WhatsApp Session Data",api:"New API URL Endpoint"};
-const colors={fb:"--fb",wp:"--wp",api:"--api",run:"--run"};
+const labels={fb:"Facebook JSON Cookie",wp:"WhatsApp Session",api:"New API URL",bot:"Bot Control Command"};
+const placeholders={fb:"Paste Facebook JSON cookie string...",wp:"Paste WhatsApp session credentials...",api:"Enter new API endpoint URL...",bot:"Enter custom control flags or leave default..."};
+const colors={fb:"--fb",wp:"--wp",api:"--api",bot:"--bot"};
+
 function show(el,cls,t){el.className="msg "+cls;el.textContent=t}
 
 function showCurrent(){
   const v=apiData&&apiData[$("key").value];
-  $("cur").textContent="Current value: "+(Array.isArray(v)?v.join(", "):(v||"none"));
+  $("cur").textContent="Current: "+(Array.isArray(v)?v.join(", "):(v||""));
 }
+
 async function loadKeys(){
-  $("cur").textContent="Loading configurations...";
+  $("cur").textContent="Loading keys...";
   try{
     const r=await fetch("/keys"); const j=await r.json();
     if(!r.ok) throw new Error(j.error);
@@ -89,60 +93,61 @@ async function loadKeys(){
   }catch(e){
     apiData=null;
     $("key").innerHTML='<option value="mahmud">mahmud</option>';
-    $("cur").textContent="Could not load keys ("+e.message+"). Default: mahmud";
+    $("cur").textContent="Failed to load keys ("+e.message+"). Default: mahmud";
   }
 }
+
 $("key").onchange=showCurrent;
 
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); platform=b.dataset.p;
   
-  const isRun = platform === "run";
-  $("configSection").style.display = isRun ? "none" : "block";
-  $("runBox").style.display = isRun ? "block" : "none";
-  $("keyBox").style.display = platform==="api" ? "block" : "none";
-  
-  if(!isRun) {
-    $("lbl").textContent=labels[platform];
-    $("push").textContent="Push to GitHub";
-  } else {
-    $("push").textContent="Start Bot Process";
-  }
-
+  $("lbl").textContent=labels[platform];
+  $("data").placeholder=placeholders[platform];
   document.documentElement.style.setProperty("--ac","var("+colors[platform]+")");
+  
+  $("keyBox").style.display=platform==="api"?"block":"none";
+  $("inputSection").style.display=platform==="bot"?"none":"block";
+  
+  const pushBtn = $("push");
+  if(platform==="bot"){
+    pushBtn.textContent="Run Bot Now";
+  } else {
+    pushBtn.textContent="Push to GitHub";
+  }
+  
   $("msg").className="msg";
   if(platform==="api") loadKeys();
 });
 
 $("push").onclick=async()=>{
-  const btn=$("push"); btn.disabled=true;
+  const btn=$("push"); btn.disabled=true; 
+  const originalText = btn.textContent;
+  btn.textContent=platform==="bot"?"Starting Bot...":"Pushing...";
   
-  if(platform === "run") {
-    btn.textContent="Starting Bot...";
-    try{
-      const r=await fetch("/run",{method:"POST",headers:{"Content-Type":"application/json"}});
-      const j=await r.json();
-      if(!r.ok) show($("msg"),"err","Failed to start: "+(j.error || "Unknown error"));
-      else show($("msg"),"ok","Bot process successfully initiated!");
-    }catch(e){show($("msg"),"err","Network error: "+e.message)}
-    btn.disabled=false; btn.textContent="Start Bot Process";
-    return;
-  }
-
-  btn.textContent="Pushing...";
   try{
-    const body={platform,data:$("data").value};
+    const endpoint = platform==="bot" ? "/run-bot" : "/push";
+    const body={platform, data:$("data").value};
     if(platform==="api") body.key=$("key").value||"mahmud";
-    const r=await fetch("/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    
+    const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     const j=await r.json();
-    if(!r.ok) show($("msg"),"err","Update failed: "+j.error);
-    else {
-      show($("msg"),"ok","Successfully updated! Changes will reflect shortly.");
+    
+    if(!r.ok) throw new Error(j.error || "Operation failed");
+    
+    if(platform==="bot"){
+      show($("msg"),"ok","Bot started successfully!");
+    } else {
+      show($("msg"),"ok","Successfully updated! Changes may take a few minutes to apply.");
       $("data").value="";
       if(platform==="api") loadKeys();
     }
-  }catch(e){show($("msg"),"err","Network error: "+e.message)}
-  btn.disabled=false; btn.textContent="Push to GitHub";
+  }catch(e){
+    show($("msg"),"err","Error: "+e.message);
+  }
+  btn.disabled=false; btn.textContent=originalText;
 };
-</script></body></html>
+</script>
+</body>
+</html>
