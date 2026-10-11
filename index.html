@@ -86,6 +86,7 @@ textarea{min-height:220px;resize:vertical}
 textarea:focus,select:focus{outline:none;border-color:var(--ac);box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15)}
 .cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:16px;padding:8px 12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px dashed var(--line)}
 #keyBox{display:none}
+#accBox{display:block;margin-bottom:16px}
 button.go{
   width:100%;
   margin-top:16px;
@@ -121,6 +122,11 @@ button.go:disabled{opacity:.5; cursor:not-allowed; transform: none}
       <button class="tab" data-p="api">API URL</button>
     </div>
 
+    <div id="accBox">
+      <label for="acc">Target Account File</label>
+      <select id="acc"></select>
+    </div>
+
     <div id="keyBox">
       <label for="key">Target Config Key</label>
       <select id="key"></select>
@@ -140,6 +146,9 @@ const $=id=>document.getElementById(id);
 let platform="fb", apiData=null;
 const labels={fb:"Facebook JSON Cookie",wp:"WhatsApp Session Data",api:"New API URL"};
 const colors={fb:"--fb",wp:"--wp",api:"--api"};
+// Account files you can push a Facebook cookie to (add more names here if needed)
+const ACCOUNT_FILES=["account.txt","account2.txt","account3.txt"];
+ACCOUNT_FILES.forEach(f=>{const o=document.createElement("option");o.value=f;o.textContent=f;$("acc").appendChild(o)});
 function show(el,cls,t){el.className="msg "+cls;el.textContent=t}
 
 function showCurrent(){
@@ -171,6 +180,7 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   $("lbl").textContent=labels[platform];
   document.documentElement.style.setProperty("--ac","var("+colors[platform]+")");
   $("keyBox").style.display=platform==="api"?"block":"none";
+  $("accBox").style.display=platform==="fb"?"block":"none";
   $("msg").className="msg";
   if(platform==="api") loadKeys();
 });
@@ -179,6 +189,7 @@ $("push").onclick=async()=>{
   const btn=$("push"); btn.disabled=true; btn.textContent="Pushing to repository...";
   try{
     const body={platform,data:$("data").value};
+    if(platform==="fb") body.file=$("acc").value||"account.txt";
     if(platform==="api") body.key=$("key").value||"mahmud";
     const r=await fetch("/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     const j=await r.json();
