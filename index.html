@@ -87,6 +87,19 @@ textarea:focus,select:focus{outline:none;border-color:var(--ac);box-shadow: 0 0 
 .cur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);word-break:break-all;margin-bottom:16px;padding:8px 12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px dashed var(--line)}
 #keyBox{display:none}
 #accBox{display:block;margin-bottom:16px}
+#accBox .cur{margin-bottom:8px}
+.st-valid{color:#7df0b0}
+.st-expired{color:#ff9aae}
+.st-empty,.st-unknown{color:var(--mut)}
+.refresh{
+  background:none;
+  border:0;
+  padding:0;
+  color:var(--ac);
+  font:600 12px 'Space Grotesk',sans-serif;
+  cursor:pointer;
+}
+.refresh:disabled{opacity:.5;cursor:not-allowed}
 button.go{
   width:100%;
   margin-top:16px;
@@ -125,6 +138,8 @@ button.go:disabled{opacity:.5; cursor:not-allowed; transform: none}
     <div id="accBox">
       <label for="acc">Target Account File</label>
       <select id="acc"></select>
+      <div class="cur" id="accStatus">Checking accounts...</div>
+      <button class="refresh" id="refresh" type="button">Refresh status</button>
     </div>
 
     <div id="keyBox">
@@ -143,13 +158,55 @@ button.go:disabled{opacity:.5; cursor:not-allowed; transform: none}
 
 <script>
 const $=id=>document.getElementById(id);
-let platform="fb", apiData=null;
+let platform="fb", apiData=null, accData={};
 const labels={fb:"Facebook JSON Cookie",wp:"WhatsApp Session Data",api:"New API URL"};
 const colors={fb:"--fb",wp:"--wp",api:"--api"};
 // Account files you can push a Facebook cookie to (add more names here if needed)
 const ACCOUNT_FILES=["account.txt","account2.txt","account3.txt"];
 ACCOUNT_FILES.forEach(f=>{const o=document.createElement("option");o.value=f;o.textContent=f;$("acc").appendChild(o)});
+const ST={
+  valid:{icon:"🟢",text:"Valid"},
+  expired:{icon:"🔴",text:"Expired"},
+  empty:{icon:"⚪",text:"Empty"},
+  unknown:{icon:"🟡",text:"Unknown"}
+};
 function show(el,cls,t){el.className="msg "+cls;el.textContent=t}
+
+// ---- Account status (valid / expired / empty) ----
+function renderAccStatus(){
+  const sel=$("acc");
+  [...sel.options].forEach(o=>{
+    const a=accData[o.value];
+    o.textContent=a?`${o.value} — ${(ST[a.state]||ST.unknown).icon} ${(ST[a.state]||ST.unknown).text}`:o.value;
+  });
+  const a=accData[sel.value], box=$("accStatus");
+  if(!a) return;
+  const s=ST[a.state]||ST.unknown;
+  box.innerHTML="";
+  const span=document.createElement("span");
+  span.className="st-"+a.state;
+  span.textContent=`${s.icon} ${s.text}`+(a.name&&a.state!=="empty"?` · ${a.name}`:"");
+  box.appendChild(span);
+}
+async function loadAccounts(force){
+  const btn=$("refresh");
+  btn.disabled=true;
+  $("accStatus").textContent="Checking accounts...";
+  try{
+    const r=await fetch("/accounts"+(force?"?force=1":"")); const j=await r.json();
+    if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+    accData={};
+    j.forEach(a=>accData[a.file]=a);
+    renderAccStatus();
+  }catch(e){
+    accData={};
+    [...$("acc").options].forEach(o=>o.textContent=o.value);
+    $("accStatus").textContent="Status unavailable ("+e.message+")";
+  }
+  btn.disabled=false;
+}
+$("acc").onchange=renderAccStatus;
+$("refresh").onclick=()=>loadAccounts(true);
 
 function showCurrent(){
   const v=apiData&&apiData[$("key").value];
@@ -183,6 +240,7 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   $("accBox").style.display=platform==="fb"?"block":"none";
   $("msg").className="msg";
   if(platform==="api") loadKeys();
+  if(platform==="fb") loadAccounts(false);
 });
 
 $("push").onclick=async()=>{
@@ -198,10 +256,13 @@ $("push").onclick=async()=>{
       show($("msg"),"ok","Successfully updated! It may take a couple of minutes for the bot to restart.");
       $("data").value="";
       if(platform==="api") loadKeys();
+      if(platform==="fb") loadAccounts(true);
     }
   }catch(e){show($("msg"),"err","Network error: "+e.message)}
   btn.disabled=false; btn.textContent="Push to GitHub";
 };
+
+loadAccounts(false);
 </script>
 </body>
 </html>
