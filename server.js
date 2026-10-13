@@ -116,18 +116,31 @@ async function checkAccountFile(file, force) {
             p instanceof RegExp ? p.test(html) : html.includes(p)
           );
 
-          // Fallback: a real logged-in home feed is a huge bootstrapped page.
-          // A logged-out/login page is comparatively tiny. Used only when
-          // no explicit signal fired either way, to avoid guessing wrong.
           const sizeFallback = !loggedOut && !loggedInExplicit && html.length > 80000;
-
           const loggedIn = loggedInExplicit || sizeFallback;
           state = loggedOut ? "expired" : loggedIn ? "valid" : "unknown";
 
-          const m = html.match(/"NAME":"([^"]+)"/); // best effort, may not exist
-          if (m) {
-            try { name = JSON.parse(`"${m[1]}"`); } catch (e) { name = m[1]; }
+          // Improved Name extraction matching multiple patterns used by Facebook SSR data
+          const namePatterns = [
+            /"NAME":"([^"]+)"/,
+            /"name":"([^"]+)"/,
+            /"USER_NAME":"([^"]+)"/,
+            /\\?"name\\?":\\?"([^"\\]+)\\?"/
+          ];
+          
+          for (const pattern of namePatterns) {
+            const m = html.match(pattern);
+            if (m && m[1]) {
+              try { 
+                name = JSON.parse(`"${m[1]}"`); 
+                break;
+              } catch (e) { 
+                name = m[1]; 
+                break;
+              }
+            }
           }
+
           detail = `status=${res.status} len=${html.length} final=${finalUrl.slice(0, 60)}${sizeFallback ? " (size-fallback)" : ""}`;
         } catch (e) {
           detail = `request error: ${e.code || e.message}`;
@@ -172,7 +185,6 @@ app.post("/push", async (req, res) => {
   if (!baseTarget) return res.status(400).json({ error: "Platform vul." });
   if (!data || !String(data).trim()) return res.status(400).json({ error: "Data dite hobe." });
 
-  // Facebook: choose which account file to write (account.txt / account2.txt / account3.txt)
   let t = baseTarget;
   if (platform === "fb") {
     const file = req.body.file || "account.txt";
@@ -181,7 +193,6 @@ app.post("/push", async (req, res) => {
   }
 
   try {
-    // For Facebook account2/account3 the file may not exist yet, so a 404 means "create new file"
     let cur = null;
     try {
       cur = (await axios.get(ghUrl(t), { headers: ghHeaders(t) })).data;
@@ -208,19 +219,19 @@ app.post("/push", async (req, res) => {
     if (cur?.sha) body.sha = cur.sha;
     await axios.put(ghUrl(t), body, { headers: ghHeaders(t) });
 
-    if (platform === "fb") statusCache.delete(t.path); // force fresh status after a push
+    if (platform === "fb") statusCache.delete(t.path);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: errMsg(e) });
   }
 });
 
-// ————————————————— AUTO SWITCH (account.txt expire hole backup theke copy) ————————————————— //
+// ————————————————— AUTO SWITCH ————————————————— //
 const AUTO_ENABLED = process.env.AUTO_SWITCH !== "0";
-const AUTO_INTERVAL = 2 * 60 * 1000;   // account.txt check: proti 2 minute
-const BACKUP_RETRY = 5 * 60 * 1000;    // kono backup valid na thakle 5 min por abar check
+const AUTO_INTERVAL = 2 * 60 * 1000;
+const BACKUP_RETRY = 5 * 60 * 1000;
 const MAIN_FILE = "account.txt";
-const BACKUP_FILES = ["account2.txt", "account3.txt"]; // ei order e try korbe
+const BACKUP_FILES = ["account2.txt", "account3.txt"];
 
 let autoBusy = false;
 let backupsFailedAt = 0;
@@ -253,7 +264,6 @@ async function autoSwitch() {
   try {
     const main = await checkAccountFile(MAIN_FILE, true);
 
-    // "unknown" hole (network/FB glitch) kichu korbe na, jate vul kore overwrite na hoy
     if (main.state !== "expired" && main.state !== "empty") {
       backupsFailedAt = 0;
       return;
@@ -266,7 +276,7 @@ async function autoSwitch() {
       if (r.state === "valid") {
         const raw = await getAccountFile(f);
         await putAccountFile(MAIN_FILE, raw, `Auto switch: ${f} -> ${MAIN_FILE}`);
-        await putAccountFile(f, "", `Clear ${f} after move to ${MAIN_FILE}`); // cut: backup file khali kore dey
+        await putAccountFile(f, "", `Clear ${f} after move to ${MAIN_FILE}`);
         log(`✅ ${f} (${r.name}) ${MAIN_FILE} e move kora hoise, ${f} khali kora hoise`);
         backupsFailedAt = 0;
         return;
@@ -283,7 +293,6 @@ async function autoSwitch() {
 }
 
 app.get("/autolog", (_, res) => res.json(autoLog));
-
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "index.html")));
 
 app.listen(PORT, () => {
