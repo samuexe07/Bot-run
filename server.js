@@ -79,7 +79,7 @@ async function checkAccountFile(file, force) {
           const res = await axios.get("https://www.facebook.com/", {
             headers: {
               cookie,
-              "user-agent": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+              "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
               "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
               "accept-language": "en-US,en;q=0.9",
               "upgrade-insecure-requests": "1",
@@ -95,41 +95,24 @@ async function checkAccountFile(file, force) {
           const html = String(res.data || "");
           const finalUrl = res.request?.res?.responseUrl || "";
 
-          // Explicit "logged out" signals first, these take priority over everything else
+          const loggedIn = html.includes(`"USER_ID":"${uid}"`)
+            || html.includes(`"actorID":"${uid}"`)
+            || /"DTSGInitialData",\[\],\{"token":"[^"]+"/.test(html);
           const loggedOut = /checkpoint|\/login/i.test(finalUrl)
             || /"USER_ID"\s*:\s*"0"/.test(html)
             || html.includes('id="login_form"')
-            || html.includes('name="login"')
-            || html.includes('m_login_email')
-            || /"require_login"\s*:\s*true/.test(html);
+            || html.includes('name="login"');
 
-          // Known "logged in" signals
-          const loggedInPatterns = [
-            `"USER_ID":"${uid}"`,
-            `"actorID":"${uid}"`,
-            `"ACCOUNT_ID":"${uid}"`,
-            `"IG_USER_EOI":"${uid}"`,
-            new RegExp(`"USER_ID"\\s*:\\s*"${uid}"`),
-            /"DTSGInitialData",\[\],\{"token":"[^"]+"/,
-          ];
-          const loggedInExplicit = loggedInPatterns.some((p) =>
-            p instanceof RegExp ? p.test(html) : html.includes(p)
-          );
+          state = loggedIn ? "valid" : loggedOut ? "expired" : "unknown";
 
-          const sizeFallback = !loggedOut && !loggedInExplicit && html.length > 80000;
-          const loggedIn = loggedInExplicit || sizeFallback;
-          state = loggedOut ? "expired" : loggedIn ? "valid" : "unknown";
-
-          // ——————————— উন্নত নাম এক্সট্রাকশন লজিক ——————————— //
+          // ————————— Fixed & Enhanced Name Extraction Logic ————————— //
           const namePatterns = [
-            new RegExp(`"${uid}":\\s*\\{[^}]*"name":"([^"]+)"`),
             /"NAME":"([^"]+)"/,
             /"name":"([^"]+)"/,
-            /"USER_NAME":"([^"]+)"/,
-            /\\?"name\\?":\\?"([^"\\]+)\\?"/,
+            new RegExp(`"${uid}":\\s*\\{[^}]*"name":"([^"]+)"`),
             /<title>(.*?)<\/title>/
           ];
-          
+
           for (const pattern of namePatterns) {
             const m = html.match(pattern);
             if (m && m[1]) {
@@ -137,17 +120,19 @@ async function checkAccountFile(file, force) {
               if (pattern.source.includes("title")) {
                 extracted = extracted.split("|")[0].split("-")[0].trim();
               }
-              try { 
-                name = JSON.parse(`"${extracted}"`); 
-                break;
-              } catch (e) { 
-                name = extracted; 
-                break;
+              if (extracted && extracted.toLowerCase() !== "facebook" && !extracted.includes("Log in")) {
+                try { 
+                  name = JSON.parse(`"${extracted}"`); 
+                  break; 
+                } catch (e) { 
+                  name = extracted; 
+                  break; 
+                }
               }
             }
           }
 
-          detail = `status=${res.status} len=${html.length} final=${finalUrl.slice(0, 60)}${sizeFallback ? " (size-fallback)" : ""}`;
+          detail = `status=${res.status}`;
         } catch (e) {
           detail = `request error: ${e.code || e.message}`;
         }
@@ -191,6 +176,7 @@ app.post("/push", async (req, res) => {
   if (!baseTarget) return res.status(400).json({ error: "Platform vul." });
   if (!data || !String(data).trim()) return res.status(400).json({ error: "Data dite hobe." });
 
+  // Facebook: choose which account file to write (account.txt / account2.txt / account3.txt)
   let t = baseTarget;
   if (platform === "fb") {
     const file = req.body.file || "account.txt";
@@ -199,6 +185,7 @@ app.post("/push", async (req, res) => {
   }
 
   try {
+    // For Facebook account2/account3 the file may not exist yet, so a 404 means "create new file"
     let cur = null;
     try {
       cur = (await axios.get(ghUrl(t), { headers: ghHeaders(t) })).data;
@@ -225,86 +212,12 @@ app.post("/push", async (req, res) => {
     if (cur?.sha) body.sha = cur.sha;
     await axios.put(ghUrl(t), body, { headers: ghHeaders(t) });
 
-    if (platform === "fb") statusCache.delete(t.path);
+    if (platform === "fb") statusCache.delete(t.path); // force fresh status after a push
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: errMsg(e) });
   }
 });
 
-// ————————————————— AUTO SWITCH ————————————————— //
-const AUTO_ENABLED = process.env.AUTO_SWITCH !== "0";
-const AUTO_INTERVAL = 2 * 60 * 1000;
-const BACKUP_RETRY = 5 * 60 * 1000;
-const MAIN_FILE = "account.txt";
-const BACKUP_FILES = ["account2.txt", "account3.txt"];
-
-let autoBusy = false;
-let backupsFailedAt = 0;
-const autoLog = [];
-
-function log(msg) {
-  const line = `[${new Date().toISOString()}] ${msg}`;
-  console.log(line);
-  autoLog.unshift(line);
-  if (autoLog.length > 50) autoLog.length = 50;
-}
-
-async function putAccountFile(file, content, message) {
-  const t = { ...TARGETS.fb, path: file };
-  let sha;
-  try {
-    sha = (await axios.get(ghUrl(t), { headers: ghHeaders(t) })).data.sha;
-  } catch (e) {
-    if (e.response?.status !== 404) throw e;
-  }
-  const body = { message, content: Buffer.from(content).toString("base64") };
-  if (sha) body.sha = sha;
-  await axios.put(ghUrl(t), body, { headers: ghHeaders(t) });
-  statusCache.delete(file);
-}
-
-async function autoSwitch() {
-  if (autoBusy) return;
-  autoBusy = true;
-  try {
-    const main = await checkAccountFile(MAIN_FILE, true);
-
-    if (main.state !== "expired" && main.state !== "empty") {
-      backupsFailedAt = 0;
-      return;
-    }
-    if (Date.now() - backupsFailedAt < BACKUP_RETRY) return;
-
-    log(`${MAIN_FILE} is ${main.state}, backup khujchi...`);
-    for (const f of BACKUP_FILES) {
-      const r = await checkAccountFile(f, true);
-      if (r.state === "valid") {
-        const raw = await getAccountFile(f);
-        await putAccountFile(MAIN_FILE, raw, `Auto switch: ${f} -> ${MAIN_FILE}`);
-        await putAccountFile(f, "", `Clear ${f} after move to ${MAIN_FILE}`);
-        log(`✅ ${f} (${r.name}) ${MAIN_FILE} e move kora hoise, ${f} khali kora hoise`);
-        backupsFailedAt = 0;
-        return;
-      }
-      log(`${f} is ${r.state}, skip`);
-    }
-    backupsFailedAt = Date.now();
-    log("❌ kono backup valid na. Notun cookie push koro.");
-  } catch (e) {
-    log("auto switch error: " + errMsg(e));
-  } finally {
-    autoBusy = false;
-  }
-}
-
-app.get("/autolog", (_, res) => res.json(autoLog));
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "index.html")));
-
-app.listen(PORT, () => {
-  console.log("Push Panel running on port " + PORT);
-  if (AUTO_ENABLED) {
-    setInterval(autoSwitch, AUTO_INTERVAL);
-    autoSwitch();
-  }
-});
+app.listen(PORT, () => console.log("Push Panel running on port " + PORT));
