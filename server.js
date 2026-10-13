@@ -79,7 +79,7 @@ async function checkAccountFile(file, force) {
           const res = await axios.get("https://www.facebook.com/", {
             headers: {
               cookie,
-              "user-agent": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+              "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
               "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
               "accept-language": "en-US,en;q=0.9",
               "upgrade-insecure-requests": "1",
@@ -95,40 +95,20 @@ async function checkAccountFile(file, force) {
           const html = String(res.data || "");
           const finalUrl = res.request?.res?.responseUrl || "";
 
-          // Explicit "logged out" signals first, these take priority over everything else
+          const loggedIn = html.includes(`"USER_ID":"${uid}"`)
+            || html.includes(`"actorID":"${uid}"`)
+            || /"DTSGInitialData",\[\],\{"token":"[^"]+"/.test(html);
           const loggedOut = /checkpoint|\/login/i.test(finalUrl)
             || /"USER_ID"\s*:\s*"0"/.test(html)
             || html.includes('id="login_form"')
-            || html.includes('name="login"')
-            || html.includes('m_login_email')
-            || /"require_login"\s*:\s*true/.test(html);
+            || html.includes('name="login"');
 
-          // Known "logged in" signals (these change over time, so we keep several)
-          const loggedInPatterns = [
-            `"USER_ID":"${uid}"`,
-            `"actorID":"${uid}"`,
-            `"ACCOUNT_ID":"${uid}"`,
-            `"IG_USER_EOI":"${uid}"`,
-            new RegExp(`"USER_ID"\\s*:\\s*"${uid}"`),
-            /"DTSGInitialData",\[\],\{"token":"[^"]+"/,
-          ];
-          const loggedInExplicit = loggedInPatterns.some((p) =>
-            p instanceof RegExp ? p.test(html) : html.includes(p)
-          );
-
-          // Fallback: a real logged-in home feed is a huge bootstrapped page.
-          // A logged-out/login page is comparatively tiny. Used only when
-          // no explicit signal fired either way, to avoid guessing wrong.
-          const sizeFallback = !loggedOut && !loggedInExplicit && html.length > 80000;
-
-          const loggedIn = loggedInExplicit || sizeFallback;
-          state = loggedOut ? "expired" : loggedIn ? "valid" : "unknown";
-
+          state = loggedIn ? "valid" : loggedOut ? "expired" : "unknown";
           const m = html.match(/"NAME":"([^"]+)"/); // best effort, may not exist
           if (m) {
             try { name = JSON.parse(`"${m[1]}"`); } catch (e) { name = m[1]; }
           }
-          detail = `status=${res.status} len=${html.length} final=${finalUrl.slice(0, 60)}${sizeFallback ? " (size-fallback)" : ""}`;
+          detail = `status=${res.status}`;
         } catch (e) {
           detail = `request error: ${e.code || e.message}`;
         }
@@ -215,81 +195,5 @@ app.post("/push", async (req, res) => {
   }
 });
 
-// ————————————————— AUTO SWITCH (account.txt expire hole backup theke copy) ————————————————— //
-const AUTO_ENABLED = process.env.AUTO_SWITCH !== "0";
-const AUTO_INTERVAL = 2 * 60 * 1000;   // account.txt check: proti 2 minute
-const BACKUP_RETRY = 5 * 60 * 1000;    // kono backup valid na thakle 5 min por abar check
-const MAIN_FILE = "account.txt";
-const BACKUP_FILES = ["account2.txt", "account3.txt"]; // ei order e try korbe
-
-let autoBusy = false;
-let backupsFailedAt = 0;
-const autoLog = [];
-
-function log(msg) {
-  const line = `[${new Date().toISOString()}] ${msg}`;
-  console.log(line);
-  autoLog.unshift(line);
-  if (autoLog.length > 50) autoLog.length = 50;
-}
-
-async function putAccountFile(file, content, message) {
-  const t = { ...TARGETS.fb, path: file };
-  let sha;
-  try {
-    sha = (await axios.get(ghUrl(t), { headers: ghHeaders(t) })).data.sha;
-  } catch (e) {
-    if (e.response?.status !== 404) throw e;
-  }
-  const body = { message, content: Buffer.from(content).toString("base64") };
-  if (sha) body.sha = sha;
-  await axios.put(ghUrl(t), body, { headers: ghHeaders(t) });
-  statusCache.delete(file);
-}
-
-async function autoSwitch() {
-  if (autoBusy) return;
-  autoBusy = true;
-  try {
-    const main = await checkAccountFile(MAIN_FILE, true);
-
-    // "unknown" hole (network/FB glitch) kichu korbe na, jate vul kore overwrite na hoy
-    if (main.state !== "expired" && main.state !== "empty") {
-      backupsFailedAt = 0;
-      return;
-    }
-    if (Date.now() - backupsFailedAt < BACKUP_RETRY) return;
-
-    log(`${MAIN_FILE} is ${main.state}, backup khujchi...`);
-    for (const f of BACKUP_FILES) {
-      const r = await checkAccountFile(f, true);
-      if (r.state === "valid") {
-        const raw = await getAccountFile(f);
-        await putAccountFile(MAIN_FILE, raw, `Auto switch: ${f} -> ${MAIN_FILE}`);
-        await putAccountFile(f, "", `Clear ${f} after move to ${MAIN_FILE}`); // cut: backup file khali kore dey
-        log(`✅ ${f} (${r.name}) ${MAIN_FILE} e move kora hoise, ${f} khali kora hoise`);
-        backupsFailedAt = 0;
-        return;
-      }
-      log(`${f} is ${r.state}, skip`);
-    }
-    backupsFailedAt = Date.now();
-    log("❌ kono backup valid na. Notun cookie push koro.");
-  } catch (e) {
-    log("auto switch error: " + errMsg(e));
-  } finally {
-    autoBusy = false;
-  }
-}
-
-app.get("/autolog", (_, res) => res.json(autoLog));
-
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "index.html")));
-
-app.listen(PORT, () => {
-  console.log("Push Panel running on port " + PORT);
-  if (AUTO_ENABLED) {
-    setInterval(autoSwitch, AUTO_INTERVAL);
-    autoSwitch();
-  }
-});
+app.listen(PORT, () => console.log("Push Panel running on port " + PORT));
