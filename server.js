@@ -95,20 +95,40 @@ async function checkAccountFile(file, force) {
           const html = String(res.data || "");
           const finalUrl = res.request?.res?.responseUrl || "";
 
-          const loggedIn = html.includes(`"USER_ID":"${uid}"`)
-            || html.includes(`"actorID":"${uid}"`)
-            || /"DTSGInitialData",\[\],\{"token":"[^"]+"/.test(html);
+          // Explicit "logged out" signals first, these take priority over everything else
           const loggedOut = /checkpoint|\/login/i.test(finalUrl)
             || /"USER_ID"\s*:\s*"0"/.test(html)
             || html.includes('id="login_form"')
-            || html.includes('name="login"');
+            || html.includes('name="login"')
+            || html.includes('m_login_email')
+            || /"require_login"\s*:\s*true/.test(html);
 
-          state = loggedIn ? "valid" : loggedOut ? "expired" : "unknown";
+          // Known "logged in" signals (these change over time, so we keep several)
+          const loggedInPatterns = [
+            `"USER_ID":"${uid}"`,
+            `"actorID":"${uid}"`,
+            `"ACCOUNT_ID":"${uid}"`,
+            `"IG_USER_EOI":"${uid}"`,
+            new RegExp(`"USER_ID"\\s*:\\s*"${uid}"`),
+            /"DTSGInitialData",\[\],\{"token":"[^"]+"/,
+          ];
+          const loggedInExplicit = loggedInPatterns.some((p) =>
+            p instanceof RegExp ? p.test(html) : html.includes(p)
+          );
+
+          // Fallback: a real logged-in home feed is a huge bootstrapped page.
+          // A logged-out/login page is comparatively tiny. Used only when
+          // no explicit signal fired either way, to avoid guessing wrong.
+          const sizeFallback = !loggedOut && !loggedInExplicit && html.length > 80000;
+
+          const loggedIn = loggedInExplicit || sizeFallback;
+          state = loggedOut ? "expired" : loggedIn ? "valid" : "unknown";
+
           const m = html.match(/"NAME":"([^"]+)"/); // best effort, may not exist
           if (m) {
             try { name = JSON.parse(`"${m[1]}"`); } catch (e) { name = m[1]; }
           }
-          detail = `status=${res.status}`;
+          detail = `status=${res.status} len=${html.length} final=${finalUrl.slice(0, 60)}${sizeFallback ? " (size-fallback)" : ""}`;
         } catch (e) {
           detail = `request error: ${e.code || e.message}`;
         }
