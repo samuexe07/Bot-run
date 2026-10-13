@@ -103,7 +103,7 @@ async function checkAccountFile(file, force) {
             || html.includes('m_login_email')
             || /"require_login"\s*:\s*true/.test(html);
 
-          // Known "logged in" signals (these change over time, so we keep several)
+          // Known "logged in" signals
           const loggedInPatterns = [
             `"USER_ID":"${uid}"`,
             `"actorID":"${uid}"`,
@@ -120,22 +120,28 @@ async function checkAccountFile(file, force) {
           const loggedIn = loggedInExplicit || sizeFallback;
           state = loggedOut ? "expired" : loggedIn ? "valid" : "unknown";
 
-          // Improved Name extraction matching multiple patterns used by Facebook SSR data
+          // ——————————— উন্নত নাম এক্সট্রাকশন লজিক ——————————— //
           const namePatterns = [
+            new RegExp(`"${uid}":\\s*\\{[^}]*"name":"([^"]+)"`),
             /"NAME":"([^"]+)"/,
             /"name":"([^"]+)"/,
             /"USER_NAME":"([^"]+)"/,
-            /\\?"name\\?":\\?"([^"\\]+)\\?"/
+            /\\?"name\\?":\\?"([^"\\]+)\\?"/,
+            /<title>(.*?)<\/title>/
           ];
           
           for (const pattern of namePatterns) {
             const m = html.match(pattern);
             if (m && m[1]) {
+              let extracted = m[1];
+              if (pattern.source.includes("title")) {
+                extracted = extracted.split("|")[0].split("-")[0].trim();
+              }
               try { 
-                name = JSON.parse(`"${m[1]}"`); 
+                name = JSON.parse(`"${extracted}"`); 
                 break;
               } catch (e) { 
-                name = m[1]; 
+                name = extracted; 
                 break;
               }
             }
